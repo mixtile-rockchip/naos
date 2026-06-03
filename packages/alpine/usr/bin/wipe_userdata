@@ -1,0 +1,52 @@
+#!/bin/sh
+
+LOGFILE="/var/log/wipe_userdata.log"
+mkdir -p "$(dirname "$LOGFILE")"
+exec > >(tee -a "$LOGFILE") 2>&1
+
+log() {
+    echo "$(date '+%Y-%m-%d %H:%M:%S') $*"
+}
+
+FORCE=0
+for arg in "$@"; do
+    [ "$arg" = "-f" ] && FORCE=1
+done
+
+log "=== WARNING: DANGEROUS OPERATION ==="
+log "This script will DELETE ALL userdata"
+log "This action cannot be undone!"
+
+if [ "$FORCE" -ne 1 ]; then
+    read -p "Are you sure you want to proceed with deletion? (yes/no): " confirm_delete
+    case "$confirm_delete" in
+        [yY]|[yY][eE][sS])
+            log "Proceeding with deletion..."
+            ;;
+        *)
+            log "Operation cancelled by user."
+            exit 0
+            ;;
+    esac
+else
+    log "Force mode enabled: Skipping confirmation and reboot."
+fi
+
+log "Deleting files and directories in userdata"
+mkdir -p /wipe_userdata
+mount /dev/mapper/vuserdata /wipe_userdata
+
+if [ $? -eq 0 ]; then
+    rm -rf /wipe_userdata/overlay/upper/*
+    rm -rf /wipe_userdata/overlay/work/*
+    log "Deletion completed successfully."
+else
+    log "Error: Deletion failed with exit code $?"
+    exit 1
+fi
+
+if [ "$FORCE" -ne 1 ]; then
+    log "System will reboot in 3 seconds..."
+    sleep 3
+    reboot
+fi

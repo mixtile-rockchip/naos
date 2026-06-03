@@ -1,0 +1,86 @@
+#!/bin/sh                     
+# get-serial-number.sh - Read and save device serial number from OTP with logging
+                                                                                                      
+LOG_FILE="/var/log/serial-number.log"    
+SN_FILE="/etc/SN"
+HOSTNAME_FILE="/etc/hostname"
+                                                                                                      
+log() { 
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
+}             
+                                                   
+# Create log directory
+mkdir -p "$(dirname "$LOG_FILE")"           
+                                                   
+log "Starting OTP serial number retrieval"
+
+# 1. Check if otp command exists
+if ! command -v otp >/dev/null 2>&1; then                                                  
+    log "ERROR: otp command not found"  
+    exit 1                                         
+fi                                                                                                    
+                                                   
+log "Command found: $(which otp)"
+                                                   
+# 2. Try to read serial number      
+log "Reading serial number with: otp read"                              
+RAW_OUTPUT=$(otp read 2>&1)   
+EXIT_CODE=$?                                       
+                                                   
+if [ $EXIT_CODE -ne 0 ]; then
+    log "ERROR: Failed to read OTP (exit code: $EXIT_CODE)"                                
+    log "Command output: $RAW_OUTPUT"
+    exit $EXIT_CODE      
+fi                                                                                                    
+                                                   
+log "Raw output received: $RAW_OUTPUT"
+                                                   
+SERIAL_NUMBER=$(echo "$RAW_OUTPUT" | awk -F': ' '/^SN:/ {print $2}')                                             
+                                                                                                      
+if [ "$SERIAL_NUMBER" == "................" ]; then
+    log "ERROR: Could not extract serial number from output, use default SERIAL_NUMBER" 
+    SERIAL_NUMBER="XXXXXXXXXXXXXXXX"
+fi                                                                                                    
+                                                   
+log "Extracted serial number: $SERIAL_NUMBER"
+                                                   
+# 4. Save to file                 
+log "Saving serial number to: $SN_FILE"
+if echo "$SERIAL_NUMBER" > "$SN_FILE"; then
+    # Verify the file was written correctly
+    if [ -f "$SN_FILE" ]; then
+        FILE_CONTENT=$(cat "$SN_FILE")                                                                
+        log "SUCCESS: Serial number saved to $SN_FILE"                                                
+        log "File content: $FILE_CONTENT"
+                 
+    else
+        log "ERROR: File was not created: $SN_FILE"              
+        exit 1
+    fi                                             
+else                  
+    log "ERROR: Failed to write to $SN_FILE"
+    exit 1                                         
+fi                                    
+
+echo "$SERIAL_NUMBER" > "$HOSTNAME_FILE"
+hostname -F $HOSTNAME_FILE
+
+log "Saving hostname to: $HOSTNAME_FILE"
+if echo "$SERIAL_NUMBER" > "$HOSTNAME_FILE"; then
+    log "SUCCESS: Hostname saved to $HOSTNAME_FILE"
+else
+    log "ERROR: Failed to write to $HOSTNAME_FILE"
+    exit 1
+fi
+
+log "Applying hostname to system..."
+if hostname -F "$HOSTNAME_FILE"; then
+    log "SUCCESS: Hostname applied to kernel"
+    log "Current hostname: $(hostname)"
+else
+    log "ERROR: Failed to apply hostname to kernel"
+    exit 1
+fi
+
+
+log "Serial number retrieval completed successfully"

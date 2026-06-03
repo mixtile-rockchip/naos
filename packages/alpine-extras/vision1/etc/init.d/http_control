@@ -1,0 +1,19 @@
+#!/sbin/openrc-run
+
+description="http_control server"
+command="/usr/bin/http_control"
+pidfile="/run/http_control.pid"
+command_background=true
+
+start() {
+    ebegin "Starting http_control services"
+    start-stop-daemon --start --background --make-pidfile --pidfile "$pidfile" --exec "$command"
+    eend $?
+}
+
+stop() {
+    ebegin "Stopping http_control services"
+    start-stop-daemon --stop --pidfile "$pidfile"
+    eend $?
+}
+

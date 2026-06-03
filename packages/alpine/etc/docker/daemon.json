@@ -1,0 +1,5 @@
+{
+  "data-root": "/userdata/docker",
+  "storage-driver": "fuse-overlayfs"
+}
+

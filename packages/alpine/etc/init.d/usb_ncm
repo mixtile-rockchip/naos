@@ -1,0 +1,24 @@
+#!/sbin/openrc-run
+
+description="USB NCM network service"
+command="/usr/bin/usb_ncm.sh"
+command_background=true
+pidfile="/var/run/usb_ncm.pid"
+
+depend() {
+    need localmount
+    after *
+}
+
+start() {
+    ebegin "Starting USB NCM services"
+    start-stop-daemon --start --background --exec "$command" -- $command_args
+    eend $?
+}
+
+stop() {
+    ebegin "Stopping USB NCM services"
+    start-stop-daemon --stop --pidfile "$pidfile"
+    ifconfig usb0 down
+    eend $?
+}

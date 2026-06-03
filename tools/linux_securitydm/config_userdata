@@ -1,0 +1,12 @@
+source encrypted_key
+ROOT_DEV=/dev/mmcblk0p6
+INIT=/init
+KERNEL_PATH=null
+RESOURCE_PATH=null
+inputimg=../linux_pack_firmware/userdata.img
+#RAMDISK_PATH=
+#cipher=
+#BOOT_ONLY=1
+outputfile=output/encrypted_userdata.img
+filetype=f2fs
+#sectors=

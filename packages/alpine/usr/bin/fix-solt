@@ -1,0 +1,42 @@
+#!/bin/sh
+
+LOGFILE="/var/log/fix-slot.log"
+exec >"$LOGFILE" 2>&1
+
+sleep 600
+echo $(date)
+
+slot0_tries=$(updateEngine --misc=display 2>/dev/null | grep "slot.\[0\]" | grep -oE 'tries_remaining = [0-9]+' | awk '{print $3}')
+slot1_tries=$(updateEngine --misc=display 2>/dev/null | grep "slot.\[1\]" | grep -oE 'tries_remaining = [0-9]+' | awk '{print $3}')
+
+write_partition() {
+    local src=$1
+    local dst=$2
+    echo "Writing: $src -> $dst"
+    
+    # Use dd for partition writing
+    dd if="$src" of="$dst" bs=1M 2>/dev/null
+    if [ $? -ne 0 ]; then
+        echo "Fix failed!!!!!!"
+        exit 1
+    fi
+}
+
+if [ "$slot0_tries" = "0" ]; then
+    echo "Fix slot A"
+    write_partition "/dev/block/by-name/uboot_b" "/dev/block/by-name/uboot_a"
+    write_partition "/dev/block/by-name/boot_b" "/dev/block/by-name/boot_a"
+    write_partition "/dev/block/by-name/system_b" "/dev/block/by-name/system_a"
+    echo -ne '\x07' | dd of=/dev/block/by-name/misc bs=1 seek=2057 count=1 conv=notrunc
+    echo "Fixed slot A"
+elif [ "$slot1_tries" = "0" ]; then
+    echo "Fix slot B"
+    write_partition "/dev/block/by-name/uboot_a" "/dev/block/by-name/uboot_b"
+    write_partition "/dev/block/by-name/boot_a" "/dev/block/by-name/boot_b"
+    write_partition "/dev/block/by-name/system_a" "/dev/block/by-name/system_b"
+    echo -ne '\x07' | dd of=/dev/block/by-name/misc bs=1 seek=2061 count=1 conv=notrunc
+    echo "Fixed slot B"
+else
+    echo "Both slots is ok, no operation needed"
+fi
+

@@ -1,0 +1,49 @@
+#!/bin/sh                                                                                                                                                                                                    
+# Script to automatically set MAC address of eth0 on boot                                                                                                                                                    
+# All outputs are logged to /var/log/auto_set_mac.log                                                                                                                                                        
+                                                                                                                                                                                                             
+LOGFILE="/var/log/auto_set_mac.log"                                                                                                                                                                          
+                                                                                                                                                                                                             
+echo "[auto_set_mac] Script started at $(date)" >> "$LOGFILE"                                                                                                                                                
+                                                                                                                                                                                                             
+# 1. Run 'otp read' and extract MAC line                                                                                                                                                                     
+MAC_LINE=$(otp read | grep '^MAC:')                                                                                                                                                                          
+if [ -z "$MAC_LINE" ]; then                                                                                                                                                                                  
+    echo "[auto_set_mac] ERROR: No 'MAC:' line found from 'otp read'!" >> "$LOGFILE"                                                                                                                         
+    exit 2                                                                                                                                                                                                   
+fi                                                                                                                                                                                                           
+                                                                                                                                                                                                             
+# 2. Parse the MAC address                                                                                                                                                                                   
+MAC=$(echo "$MAC_LINE" | awk '{print $2}')                                                                                                                                                                   
+echo "[auto_set_mac] Read MAC: $MAC" >> "$LOGFILE"                                                                                                                                                           
+                                                                                                                                                                                                             
+# 3. Check if MAC address is valid                                                                                                                                                                           
+if [ -z "$MAC" ] || [ "$MAC" = "00:00:00:00:00:00" ]; then                                                                                                                                                   
+    echo "[auto_set_mac] ERROR: No valid MAC address detected. Skipping configuration." >> "$LOGFILE"                                                                                                        
+    exit 1                                                                                                                                                                                                   
+fi                                                                                                                                                                                                           
+                                                                                                                                                                                                             
+# 4. Check if eth0 exists                                                                                                                                                                                    
+if ! ip link show eth0 > /dev/null 2>&1; then                                                                                                                                                                
+    echo "[auto_set_mac] ERROR: Network interface eth0 not found!" >> "$LOGFILE"                                                                                                                             
+    exit 3                                                                                                                                                                                                   
+fi                                                                                                                                                                                                           
+                                                                                                                                                                                                             
+# 5. Set MAC address on eth0                                                                                                                                                                                 
+echo "[auto_set_mac] Setting MAC address of eth0 to $MAC ..." >> "$LOGFILE"                                                                                                                                  
+ip link set dev eth0 down >> "$LOGFILE" 2>&1                                                                                                                                                                 
+if ip link set dev eth0 address "$MAC" >> "$LOGFILE" 2>&1; then                                                                                                                                              
+    echo "[auto_set_mac] MAC address set successfully." >> "$LOGFILE"                                                                                                                                        
+else                                                                                                                                                                                                         
+    echo "[auto_set_mac] ERROR: Failed to set MAC address!" >> "$LOGFILE"                                                                                                                                    
+    exit 4                                                                                                                                                                                                   
+fi                                                                                                                                                                                                           
+ip link set dev eth0 up >> "$LOGFILE" 2>&1                                                                                                                                                                   
+                                                                                                                                                                                                             
+# 6. Display current MAC address of eth0                                                                                                                                                                     
+CURRENT_MAC=$(ip link show eth0 | grep ether)                                                                                                                                                                
+echo "[auto_set_mac] Current eth0 MAC: $CURRENT_MAC" >> "$LOGFILE"                                                                                                                                           
+                                                                                                                                                                                                             
+echo "[auto_set_mac] Script completed at $(date)." >> "$LOGFILE"                                                                                                                                             
+exit 0                                                                                                                                                                                                       
+

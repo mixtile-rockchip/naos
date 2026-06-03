@@ -1,0 +1,12 @@
+source encrypted_key
+ROOT_DEV=/dev/mmcblk0p4
+INIT=/init
+KERNEL_PATH=null
+RESOURCE_PATH=null
+inputimg=../rootfs.img
+#RAMDISK_PATH=
+#cipher=
+#BOOT_ONLY=1
+outputfile=output/encrypted.img
+filetype=squashfs
+#sectors=

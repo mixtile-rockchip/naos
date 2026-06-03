@@ -1,0 +1,10 @@
+#!/sbin/openrc-run
+
+description="Load custom network modules"
+
+
+start() {
+    ebegin "Loading custom kernel modules"
+    /usr/bin/ins-mod.sh
+    eend $?
+}

@@ -1,0 +1,20 @@
+pkgname=board-kernel
+pkgver=0.1
+pkgrel=0
+pkgdesc="board-kernel"
+url="focalcrest.com"
+arch="all"
+license="MIT"
+
+source="boot.img"
+
+
+build() {
+        :
+}
+
+package() {
+    mkdir -p "$pkgdir"/install
+    install -Dm755 boot.img "$pkgdir"/install/boot.img
+}
+

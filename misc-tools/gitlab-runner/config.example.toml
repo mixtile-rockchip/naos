@@ -1,0 +1,51 @@
+# Example GitLab Runner configuration for this repository.
+# Copy this file to the runner host as config.toml and replace the placeholders
+# with your own GitLab instance URL, runner names, and registration tokens.
+
+# build stage
+# CI tag: my-server-builder
+[[runners]]
+  name = "naos-build-runner"
+  url = "https://gitlab.example.com/"
+  token = "REPLACE_WITH_BUILD_RUNNER_TOKEN"
+  executor = "docker"
+
+  [runners.docker]
+    image = "ghcr.io/mixtile-rockchip/ubuntu-build-env:latest"
+    privileged = true
+    volumes = [
+      "/dev:/dev",
+      "/var/run/docker.sock:/var/run/docker.sock",
+      "/home/gitlab-runner/upload-tmp:/cache",
+    ]
+
+# apkbuild stage
+# CI tag: apk-builder-runner
+[[runners]]
+  name = "naos-apkbuild-runner"
+  url = "https://gitlab.example.com/"
+  token = "REPLACE_WITH_APKBUILD_RUNNER_TOKEN"
+  executor = "docker"
+
+  [runners.docker]
+    image = "ghcr.io/mixtile-rockchip/alpine-build:latest"
+    group_add = ["110"]
+    volumes = [
+      "/var/run/docker.sock:/var/run/docker.sock",
+      "/home/gitlab-runner/upload-tmp:/cache",
+    ]
+
+# upload stage
+# CI tag: aws-upload
+[[runners]]
+  name = "naos-upload-runner"
+  url = "https://gitlab.example.com/"
+  token = "REPLACE_WITH_UPLOAD_RUNNER_TOKEN"
+  executor = "docker"
+
+  [runners.docker]
+    image = "ghcr.io/mixtile-rockchip/awscli:alpine-3.16"
+    volumes = [
+      "/var/run/docker.sock:/var/run/docker.sock",
+      "/home/gitlab-runner/upload-tmp:/cache",
+    ]

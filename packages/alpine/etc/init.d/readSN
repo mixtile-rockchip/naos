@@ -1,0 +1,20 @@
+#!/sbin/openrc-run
+description="Read SN"
+
+name="readSN"
+command="/usr/bin/vendor_storage"
+command_background=true
+
+type="oneshot"
+
+depend() {
+    need localmount
+    after syslog
+}
+
+start() {
+    ebegin "Read SN"
+    $command -r VENDOR_SN_ID -t string | awk 'END{print $3}' > /etc/SN
+    eend $?
+}
+

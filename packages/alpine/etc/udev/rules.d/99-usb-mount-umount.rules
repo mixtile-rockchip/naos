@@ -1,0 +1,7 @@
+# /etc/udev/rules.d/99-usb-mount-umount.rules
+
+# Mount the device when it is plugged in
+ACTION=="add", KERNEL=="sd[a-z]|sd[a-z][0-9]*", SUBSYSTEM=="block", ENV{ID_FS_TYPE}!="", RUN+="/usr/bin/mount_usb.sh $env{DEVNAME}"
+
+# Unmount the device when it is removed
+ACTION=="remove", KERNEL=="sd[a-z]|sd[a-z][0-9]*", SUBSYSTEM=="block", ENV{ID_FS_TYPE}!="", RUN+="/usr/bin/umount_usb.sh $env{DEVNAME}"

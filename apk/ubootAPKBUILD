@@ -1,0 +1,22 @@
+pkgname=board-uboot
+pkgver=0.1
+pkgrel=0
+pkgdesc="board-uboot"
+url="focalcrest.com"
+arch="all"
+license="MIT"
+
+source="uboot.img"
+source="MiniLoaderAll.bin"
+
+
+build() {
+        :
+}
+
+package() {
+    mkdir -p "$pkgdir"/install
+    install -Dm755 uboot.img "$pkgdir"/install/uboot.img
+    install -Dm755 MiniLoaderAll.bin "$pkgdir"/install/MiniLoaderAll.bin
+}
+

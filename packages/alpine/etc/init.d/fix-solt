@@ -1,0 +1,20 @@
+#!/sbin/openrc-run
+
+description="Fix solt service"
+command="/usr/bin/fix-solt"
+command_background=true
+LOG_FILE="/userdata/log/fix-solt"
+
+start() {
+    ebegin "Starting fix solt services"
+    start-stop-daemon --start --background --exec "$command"  --stdout "$LOG_FILE" --stderr "$LOG_FILE"
+
+    eend $?
+}
+
+stop() {
+    ebegin "Stopping fix solt services"
+    start-stop-daemon --stop --pidfile "$pidfile"
+    eend $?
+}
+

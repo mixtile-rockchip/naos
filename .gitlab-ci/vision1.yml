@@ -1,0 +1,114 @@
+stages:    
+  - build
+  - apkbuild
+  - upload   
+
+
+.vision1-base:
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^vision1-\d+\.\d+\.\d+$/'
+  before_script:
+    - 'echo "=== Vision1 start build ==="'
+    - 'echo "tag: $CI_COMMIT_TAG"'
+    - 'CI_VERSION="${CI_COMMIT_TAG#vision1-}"'
+    - 'export CI_VERSION'
+    - 'echo "Get vision: $CI_VERSION"'
+    - 'BUILD_DATE=$(date +%y%m%d)'
+    - 'echo "Get build date: $BUILD_DATE"'
+
+
+build-vision1:
+  stage: build
+  tags:
+    - my-server-builder 
+  extends: .vision1-base
+  script:
+    - './build.sh -t all -b mixtile-vision1 -p true'
+    - 'echo "rename image"'
+    - 'mv build/output/update.img ./mixtile-vision1-alpha$CI_VERSION-RK-format-alpine3.22-linux6.1.118-${BUILD_DATE}.img'
+
+    - './build.sh -t raw -b mixtile-vision1 -p true'
+    - 'mv build/output/raw.img ./mixtile-vision1-alpha$CI_VERSION-RAW-format-alpine3.22-linux6.1.118-${BUILD_DATE}.img'
+
+    - 'echo "check image exist"'
+    - 'ls ./mixtile-vision1-alpha$CI_VERSION-RK-format-alpine3.22-linux6.1.118-${BUILD_DATE}.img'
+    - 'ls ./mixtile-vision1-alpha$CI_VERSION-RAW-format-alpine3.22-linux6.1.118-${BUILD_DATE}.img'
+
+    - 'md5sum mixtile-vision1-alpha$CI_VERSION-RK-format-alpine3.22-linux6.1.118-${BUILD_DATE}.img > mixtile-vision1-alpha$CI_VERSION-RK-format-alpine3.22-linux6.1.118-${BUILD_DATE}.img.md5sum'
+    - 'md5sum mixtile-vision1-alpha$CI_VERSION-RAW-format-alpine3.22-linux6.1.118-${BUILD_DATE}.img > mixtile-vision1-alpha$CI_VERSION-RAW-format-alpine3.22-linux6.1.118-${BUILD_DATE}.img.md5sum'
+    - 'xz -k -T 0 mixtile-vision1-alpha$CI_VERSION-RAW-format-alpine3.22-linux6.1.118-${BUILD_DATE}.img'
+    - 'mkdir -p /cache/vision1'
+    - 'cp ./build/output/{MiniLoaderAll.bin,uboot.img,boot.img} /cache/vision1'
+    - 'mv ./build/output/vision1-alpine-rootfs.tar.gz /cache/vision1'
+
+  artifacts:
+    name: "${CI_COMMIT_TAG}"
+    paths:
+      - './mixtile-vision1-alpha*-RK-format-alpine3.22-linux6.1.118-*.img'
+      - './mixtile-vision1-alpha*-RK-format-alpine3.22-linux6.1.118-*.img.md5sum'
+      - './mixtile-vision1-alpha*-RAW-format-alpine3.22-linux6.1.118-*.img.xz'
+      - './mixtile-vision1-alpha*-RAW-format-alpine3.22-linux6.1.118-*.img.md5sum'
+
+
+apkbuild-uboot-vision1:
+  stage: apkbuild
+  tags:
+    - apk-builder-runner 
+  extends: .vision1-base
+  script:
+    - 'cp apk/ubootAPKBUILD APKBUILD'
+    - 'sed -i "s/pkgver=0.1/pkgver=$CI_VERSION/" APKBUILD'
+    - 'sed -i "s/board/vision1/g" APKBUILD'
+    - 'cp /cache/vision1/MiniLoaderAll.bin .'
+    - 'cp /cache/vision1/uboot.img .'
+    - 'cp -r .abuild/ /home/builder/'
+    - 'sudo cp .abuild/*.pub /etc/apk/keys/'
+    - 'abuild checksum'
+    - 'abuild -r'
+    - 'sudo mv /home/builder/packages/*/x86_64/vision1-uboot-$CI_VERSION-r0.apk /cache/vision1'
+
+apkbuild-kernel-vision1:
+  stage: apkbuild
+  tags:
+    - apk-builder-runner
+  extends: .vision1-base
+  script:
+    - 'cp apk/kernelAPKBUILD APKBUILD'
+    - 'sed -i "s/pkgver=0.1/pkgver=$CI_VERSION/" APKBUILD'
+    - 'sed -i "s/board/vision1/g" APKBUILD'
+    - 'cp /cache/vision1/boot.img .'
+    - 'sudo cp .abuild/*.pub /etc/apk/keys/'
+    - 'cp -r .abuild/ /home/builder/'
+    - 'abuild checksum'
+    - 'abuild -r'
+    - 'sudo mv /home/builder/packages/*/x86_64/vision1-kernel-$CI_VERSION-r0.apk /cache/vision1'
+
+
+apkbuild-rootfs-vision1:
+  stage: apkbuild
+  tags:
+    - apk-builder-runner
+  extends: .vision1-base
+  script:
+    - 'cp apk/rootfsAPKBUILD APKBUILD'
+    - 'sed -i "s/pkgver=0.1/pkgver=$CI_VERSION/" APKBUILD'
+    - 'sed -i "s/board/vision1/g" APKBUILD'
+    - 'cp /cache/vision1/vision1-alpine-rootfs.tar.gz .'
+    - 'sudo cp .abuild/*.pub /etc/apk/keys/'
+    - 'cp -r .abuild/ /home/builder/'
+    - 'abuild checksum'
+    - 'abuild -r'
+    - 'sudo mv /home/builder/packages/*/x86_64/vision1-alpine-rootfs-$CI_VERSION-r0.apk /cache/vision1'
+
+
+upload-vision1:
+  stage: upload
+  tags:
+    - aws-upload
+  extends: .vision1-base
+  script:
+    - 'cd /cache/vision1'
+    - 'aws s3api put-object --bucket naos-update-bucket --key "alpine-repo/x86_64/vision1-uboot-$CI_VERSION-r0.apk" --body vision1-uboot-$CI_VERSION-r0.apk'
+    - 'aws s3api put-object --bucket naos-update-bucket --key "alpine-repo/x86_64/vision1-kernel-$CI_VERSION-r0.apk" --body vision1-kernel-$CI_VERSION-r0.apk'
+    - 'aws s3api put-object --bucket naos-update-bucket --key "alpine-repo/x86_64/vision1-alpine-rootfs-$CI_VERSION-r0.apk" --body vision1-alpine-rootfs-$CI_VERSION-r0.apk'
+    - 'curl -H "X-Webhook-Token:$AWS_ACCESS_KEY_ID" http://3.85.89.239:8080/webhook/update/index'

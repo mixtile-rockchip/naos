@@ -1,0 +1,22 @@
+#!/sbin/openrc-run
+
+description="Find Part service"
+command="/usr/bin/link_part.sh"
+command_background=true
+pidfile="/var/run/link_part.pid"
+
+depend() {
+    need localmount
+}
+
+start() {
+    ebegin "Starting Find Part services"
+    start-stop-daemon --start --background --exec "$command" -- $command_args
+    eend $?
+}
+
+stop() {
+    ebegin "Stopping Find Part services"
+    start-stop-daemon --stop --pidfile "$pidfile"
+    eend $?
+}

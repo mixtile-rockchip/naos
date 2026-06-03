@@ -1,0 +1,4 @@
+build/
+tools/upgrade_key/update*
+tmp
+doc_cn

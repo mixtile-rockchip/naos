@@ -1,0 +1,93 @@
+#!/bin/sh
+
+# Usage:
+#   upgrede-sysytem [options]
+#   Options:
+#     -p, --path <image_path>  Specify image file path (default: /userdata/update.img)
+#     -r, --reboot             Reboot system after update
+#     -t, --timeout <seconds>  Specify timeout (default: from config or 9999 seconds)
+
+# Default values
+DEFAULT_IMAGE="/userdata/update.img"
+DEFAULT_TIMEOUT=9999
+LOG="/var/log/updater.log"
+CONSOLE="/dev/console"
+LOG_PIPE="/tmp/updateEngine_log.$$"
+
+log() {                         
+    local msg="$*"
+    local ts="$(date '+%Y-%m-%d %H:%M:%S')"
+    echo "$ts $msg" | tee -a "$CONSOLE" "$LOG" > /dev/null
+}                                                         
+ 
+# Initialize variables
+IMAGE_URL="$DEFAULT_IMAGE"
+REBOOT_FLAG=""            
+TIMEOUT=$(grep "upgrade_timeout" /etc/update-config.conf | awk -F'=' '{print $NF}')
+if [ -z "$TIMEOUT" ]; then                                                         
+    TIMEOUT="$DEFAULT_TIMEOUT"
+fi                            
+  
+# Parse command line arguments
+while [ $# -gt 0 ]; do        
+    case "$1" in      
+        -p|--path)
+            IMAGE_URL="$2"
+            shift 2       
+            ;;     
+        -r|--reboot)
+            REBOOT_FLAG="--reboot"
+            shift                 
+            ;;   
+        -t|--timeout)
+            TIMEOUT="$2"
+            shift 2     
+            ;;     
+        *)    
+            log "Unknown parameter: $1"
+            shift                      
+            ;;   
+    esac      
+done    
+    
+link_part.sh
+                                                      
+# Log execution info                                  
+log "=== Starting System Update ==="                                                                                  
+log "Image file: $IMAGE_URL"                                                                                          
+log "Timeout: ${TIMEOUT} seconds"                                                                                     
+                                                                                                                      
+# Check if image file exists                                                                                          
+if [ ! -f "$IMAGE_URL" ]; then                                                                                        
+    log "Error: Image file does not exist: $IMAGE_URL"                                                                
+    exit 1                                                                                                            
+fi                                                                                                                    
+                                                                                                                      
+# Execute update                                                                                                      
+log "Executing update..."                                                                                             
+mkfifo "$LOG_PIPE"
+timeout "$TIMEOUT" updateEngine --image_url="$IMAGE_URL" --update \
+    > "$LOG_PIPE" 2>&1 &
+UPD_PID=$!
+
+while IFS= read -r line; do
+    log "$line"
+done < "$LOG_PIPE"
+
+wait $UPD_PID
+
+# Log execution result                                                             
+EXIT_CODE=$?                                                
+if [ $EXIT_CODE -eq 0 ] && [ -f "$IMAGE_URL" ]; then        
+    log "Update successful, deleting image file: $IMAGE_URL"
+    rm -f "$IMAGE_URL"                       
+    sync
+fi                                           
+                                             
+if [ -n "$REBOOT_FLAG" ]; then
+    reboot
+fi
+
+log "Update completed, exit code: $EXIT_CODE"
+exit $EXIT_CODE           
+

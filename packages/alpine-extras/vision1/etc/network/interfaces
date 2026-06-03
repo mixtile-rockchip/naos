@@ -1,0 +1,26 @@
+auto lo
+iface lo inet loopback
+
+auto eth0
+iface eth0 inet dhcp
+
+auto br-lan
+iface br-lan inet static
+    address 169.254.0.1
+    netmask 255.255.0.0
+    bridge_ports eth1 eth2 eth3 eth4
+    bridge_stp off
+    bridge_fd 0
+    bridge_maxwait 0
+
+auto eth1
+iface eth1 inet manual
+
+auto eth2
+iface eth2 inet manual
+
+auto eth3
+iface eth3 inet manual
+
+#auto eth4
+#iface eth4 inet manual

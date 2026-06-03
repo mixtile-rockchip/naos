@@ -1,0 +1,24 @@
+#!/sbin/openrc-run
+# Alpine OpenRC service to print IP to serial
+
+name="print-ip"
+description="Print network IP to serial port"
+command="/usr/bin/print-ip"
+command_background=true
+pidfile="/run/${RC_SVCNAME}.pid"
+
+depend() {
+    need net
+    after networking
+}
+
+start() {
+    start-stop-daemon --start --background --exec "$command"
+    eend $?
+}
+
+stop() {
+    start-stop-daemon --stop --pidfile "$pidfile"
+    eend $?
+}
+

@@ -1,0 +1,114 @@
+stages:    
+  - build
+  - apkbuild
+  - upload   
+
+
+.core3588e-v2-nano-base:
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^core3588e-v2-nano-\d+\.\d+\.\d+$/'
+  before_script:
+    - 'echo "=== Core3588e-v2-nano start build ==="'
+    - 'echo "tag: $CI_COMMIT_TAG"'
+    - 'CI_VERSION="${CI_COMMIT_TAG#core3588e-v2-nano-}"'
+    - 'export CI_VERSION'
+    - 'echo "Get vision: $CI_VERSION"'
+    - 'BUILD_DATE=$(date +%y%m%d)'
+    - 'echo "Get build date: $BUILD_DATE"'
+
+
+build-core3588e-v2-nano:
+  stage: build
+  tags:
+    - my-server-builder 
+  extends: .core3588e-v2-nano-base
+  script:
+    - './build.sh -t all -b mixtile-core3588e-v2-nano -p true'
+    - 'echo "rename image"'
+    - 'mv build/output/update.img ./mixtile-core3588e_ver2-final$CI_VERSION-RK-format-NAOS-linux6.1-${BUILD_DATE}.img'
+
+    - './build.sh -t raw -b mixtile-core3588e-v2-nano -p true'
+    - 'mv build/output/raw.img ./mixtile-core3588e_ver2-final$CI_VERSION-RAW-format-NAOS-linux6.1-${BUILD_DATE}.img'
+
+    - 'echo "check image exist"'
+    - 'ls ./mixtile-core3588e_ver2-final$CI_VERSION-RK-format-NAOS-linux6.1-${BUILD_DATE}.img'
+    - 'ls ./mixtile-core3588e_ver2-final$CI_VERSION-RAW-format-NAOS-linux6.1-${BUILD_DATE}.img'
+
+    - 'md5sum mixtile-core3588e_ver2-final$CI_VERSION-RK-format-NAOS-linux6.1-${BUILD_DATE}.img > mixtile-core3588e_ver2-final$CI_VERSION-RK-format-NAOS-linux6.1-${BUILD_DATE}.img.md5sum'
+    - 'md5sum mixtile-core3588e_ver2-final$CI_VERSION-RAW-format-NAOS-linux6.1-${BUILD_DATE}.img > mixtile-core3588e_ver2-final$CI_VERSION-RAW-format-NAOS-linux6.1-${BUILD_DATE}.img.md5sum'
+    - 'xz -k -T 0 mixtile-core3588e_ver2-final$CI_VERSION-RAW-format-NAOS-linux6.1-${BUILD_DATE}.img'
+    - 'mkdir -p /cache/core3588e-v2-nano'
+    - 'cp ./build/output/{MiniLoaderAll.bin,uboot.img,boot.img} /cache/core3588e-v2-nano'
+    - 'mv ./build/output/core3588e-v2-nano-alpine-rootfs.tar.gz /cache/core3588e-v2-nano'
+
+  artifacts:
+    name: "mixtile-core3588e_ver2-final${CI_VERSION}"
+    paths:
+      - './mixtile-core3588e_ver2-final*-RK-format-NAOS-linux6.1-*.img'
+      - './mixtile-core3588e_ver2-final*-RK-format-NAOS-linux6.1-*.img.md5sum'
+      - './mixtile-core3588e_ver2-final*-RAW-format-NAOS-linux6.1-*.img.xz'
+      - './mixtile-core3588e_ver2-final*-RAW-format-NAOS-linux6.1-*.img.md5sum'
+
+
+apkbuild-uboot-core3588e-v2-nano:
+  stage: apkbuild
+  tags:
+    - apk-builder-runner 
+  extends: .core3588e-v2-nano-base
+  script:
+    - 'cp apk/ubootAPKBUILD APKBUILD'
+    - 'sed -i "s/pkgver=0.1/pkgver=$CI_VERSION/" APKBUILD'
+    - 'sed -i "s/board/core3588e-v2-nano/g" APKBUILD'
+    - 'cp /cache/core3588e-v2-nano/MiniLoaderAll.bin .'
+    - 'cp /cache/core3588e-v2-nano/uboot.img .'
+    - 'cp -r .abuild/ /home/builder/'
+    - 'sudo cp .abuild/*.pub /etc/apk/keys/'
+    - 'abuild checksum'
+    - 'abuild -r'
+    - 'sudo mv /home/builder/packages/*/x86_64/core3588e-v2-nano-uboot-$CI_VERSION-r0.apk /cache/core3588e-v2-nano'
+
+apkbuild-kernel-core3588e-v2-nano:
+  stage: apkbuild
+  tags:
+    - apk-builder-runner
+  extends: .core3588e-v2-nano-base
+  script:
+    - 'cp apk/kernelAPKBUILD APKBUILD'
+    - 'sed -i "s/pkgver=0.1/pkgver=$CI_VERSION/" APKBUILD'
+    - 'sed -i "s/board/core3588e-v2-nano/g" APKBUILD'
+    - 'cp /cache/core3588e-v2-nano/boot.img .'
+    - 'sudo cp .abuild/*.pub /etc/apk/keys/'
+    - 'cp -r .abuild/ /home/builder/'
+    - 'abuild checksum'
+    - 'abuild -r'
+    - 'sudo mv /home/builder/packages/*/x86_64/core3588e-v2-nano-kernel-$CI_VERSION-r0.apk /cache/core3588e-v2-nano'
+
+
+apkbuild-rootfs-core3588e-v2-nano:
+  stage: apkbuild
+  tags:
+    - apk-builder-runner
+  extends: .core3588e-v2-nano-base
+  script:
+    - 'cp apk/rootfsAPKBUILD APKBUILD'
+    - 'sed -i "s/pkgver=0.1/pkgver=$CI_VERSION/" APKBUILD'
+    - 'sed -i "s/board/core3588e-v2-nano/g" APKBUILD'
+    - 'cp /cache/core3588e-v2-nano/core3588e-v2-nano-alpine-rootfs.tar.gz .'
+    - 'sudo cp .abuild/*.pub /etc/apk/keys/'
+    - 'cp -r .abuild/ /home/builder/'
+    - 'abuild checksum'
+    - 'abuild -r'
+    - 'sudo mv /home/builder/packages/*/x86_64/core3588e-v2-nano-alpine-rootfs-$CI_VERSION-r0.apk /cache/core3588e-v2-nano'
+
+
+upload-core3588e-v2-nano:
+  stage: upload
+  tags:
+    - aws-upload
+  extends: .core3588e-v2-nano-base
+  script:
+    - 'cd /cache/core3588e-v2-nano'
+    - 'aws s3api put-object --bucket naos-update-bucket --key "alpine-repo/x86_64/core3588e-v2-nano-uboot-$CI_VERSION-r0.apk" --body core3588e-v2-nano-uboot-$CI_VERSION-r0.apk'
+    - 'aws s3api put-object --bucket naos-update-bucket --key "alpine-repo/x86_64/core3588e-v2-nano-kernel-$CI_VERSION-r0.apk" --body core3588e-v2-nano-kernel-$CI_VERSION-r0.apk'
+    - 'aws s3api put-object --bucket naos-update-bucket --key "alpine-repo/x86_64/core3588e-v2-nano-alpine-rootfs-$CI_VERSION-r0.apk" --body core3588e-v2-nano-alpine-rootfs-$CI_VERSION-r0.apk'
+    - 'curl -H "X-Webhook-Token:$AWS_ACCESS_KEY_ID" http://3.85.89.239:8080/webhook/update/index'

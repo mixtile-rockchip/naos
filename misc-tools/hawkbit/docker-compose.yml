@@ -1,0 +1,54 @@
+
+services:
+  postgres:
+    image: "postgres:16.5"
+    deploy:
+      restart_policy:
+        condition: on-failure
+    environment:
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "admin"
+      POSTGRES_DB: "hawkbit"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d ${POSTGRES_DB} -U ${POSTGRES_USER}"]
+      interval: 20s
+      retries: 10
+    networks:
+      - hawkbit-network
+  # ---------------------
+  # RabbitMQ service
+  # ---------------------
+  rabbitmq:
+    image: "rabbitmq:4-management-alpine"
+    hostname: "rabbitmq"
+    environment:
+      RABBITMQ_DEFAULT_VHOST: "/"
+      RABBITMQ_DEFAULT_USER: "guest"
+      RABBITMQ_DEFAULT_PASS: "guest"
+    networks:
+      - hawkbit-network
+    deploy:
+      restart_policy:
+        condition: on-failure
+
+
+  # ---------------------
+  # HawkBit service
+  # ---------------------
+  hawkbit:
+    image: "ghcr.io/mixtile-rockchip/hawkbit-update-server:latest"
+    volumes:
+      - /home/ubuntu/bucket/hawkbit/artifactrepo:/artifactrepo
+    restart: always
+    ports:
+      - "8000:8080"
+    networks:
+      - hawkbit-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    labels:
+      NAME: "hawkbit"
+
+networks:
+  hawkbit-network:

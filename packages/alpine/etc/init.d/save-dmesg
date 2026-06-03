@@ -1,0 +1,21 @@
+#!/sbin/openrc-run
+description="Save dmesg"
+
+name="save-dmesg"
+command="/bin/cp"
+command_background=true
+command_args="/sys/fs/pstore/console-ramoops-0 /userdata/log/dmesg"
+
+type="oneshot"
+
+depend() {
+    need localmount
+    after syslog
+}
+
+start() {
+    ebegin "Saving pstore dmesg"
+    $command $command_args
+    eend $?
+}
+

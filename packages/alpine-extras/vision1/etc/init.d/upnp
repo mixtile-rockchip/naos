@@ -1,0 +1,20 @@
+#!/sbin/openrc-run
+
+description="Upnp server"
+command="/usr/bin/upnp"
+command_background=true
+pidfile="/run/upnp.pid"
+LOG_FILE="/var/log/upnp.log"
+
+start() {
+    ebegin "Starting upnp services"
+    start-stop-daemon --start --background  --stdout "$LOG_FILE" --stderr "$LOG_FILE" --make-pidfile --pidfile "$pidfile" --exec "$command"
+    eend $?
+}
+
+stop() {
+    ebegin "Stopping upnp services"
+    start-stop-daemon --stop --pidfile "$pidfile"
+    eend $?
+}
+

@@ -1,0 +1,12 @@
+source encrypted_key
+ROOT_DEV=/dev/mmcblk0p6
+INIT=/init
+KERNEL_PATH=null
+RESOURCE_PATH=null
+inputimg=../factory.img
+#RAMDISK_PATH=
+#cipher=
+#BOOT_ONLY=1
+outputfile=output/encrypted_factory.img
+#filetype=
+#sectors=

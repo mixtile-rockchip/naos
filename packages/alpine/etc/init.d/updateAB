@@ -1,0 +1,31 @@
+#!/sbin/openrc-run
+
+command="/usr/bin/updateEngine"
+command_args="--misc=now"
+description="Run updateEngine with misc=now after misc_block service"
+command_background="no"
+logfile="/userdata/log/updateAB.log"
+
+depend() {
+    need link_block
+}
+
+start_pre() {
+    ebegin "Waiting for /dev/block/by-name/misc to appear"
+    for i in $(seq 1 10); do
+        if [ -e /dev/block/by-name/misc ]; then
+            eend 0
+            return 0
+        fi
+        sleep 1
+    done
+    eend 1 "Timeout: /dev/block/by-name/misc not found"
+    return 1
+}
+
+start() {
+    ebegin "Starting updateAB service"
+    mkdir -p "$(dirname "$logfile")"
+    start-stop-daemon --start --exec "$command" -- $command_args >> "$logfile" 2>&1
+    eend $?
+}
