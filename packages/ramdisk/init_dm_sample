@@ -183,7 +183,7 @@ fi
 if [ "${FACTORY}" = "true" ]; then
 	entry_factory
 else
-	fsck.f2fs -f /dev/mapper/vuserdata
+	fsck.f2fs -a /dev/mapper/vuserdata
 	resize.f2fs -F /dev/mapper/vuserdata
 	mount /dev/mapper/vroot /rootfs
 	mount -t f2fs -o defaults,noatime,nodiratime,background_gc=on,data_flush,checkpoint=enable,inline_xattr,inline_data /dev/mapper/vuserdata /userdata
